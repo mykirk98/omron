@@ -1,5 +1,10 @@
 import stapipy as st
 import threading
+import numpy as np
+import cv2
+
+
+DISPLAY_RESIZE_FACTOR = 0.5
 
 class CMyCallback:
     """
@@ -46,11 +51,71 @@ class CMyCallback:
                 else:
                     print("Image data does not exist")
 
+    def datastream_callback_cv2(self, handle=None, context=None):
+        """
+        Callback to handle events from DataStream.
+
+        :param handle: handle that trigger the callback.
+        :param context: user data passed on during callback registration.
+        """
+        st_datastream = handle.module
+        if st_datastream:
+            with st_datastream.retrieve_buffer() as st_buffer:
+                # Check if the acquired data contains image data.
+                if st_buffer.info.is_image_present:
+                    # Create an image object.
+                    st_image = st_buffer.get_image()
+
+                    # Check the pixelformat of the input image.
+                    pixel_format = st_image.pixel_format
+                    pixel_format_info = st.get_pixel_format_info(pixel_format)
+
+                    # Only mono or bayer is processed.
+                    if not(pixel_format_info.is_mono or pixel_format_info.is_bayer):
+                        return
+
+                    # Get raw image data.
+                    data = st_image.get_image_data()
+
+                    # Perform pixel value scaling if each pixel component is
+                    # larger than 8bit. Example: 10bit Bayer/Mono, 12bit, etc.
+                    if pixel_format_info.each_component_total_bit_count > 8:
+                        nparr = np.frombuffer(data, np.uint16)
+                        division = pow(2, pixel_format_info.each_component_valid_bit_count - 8)
+                        nparr = (nparr / division).astype('uint8')
+                    else:
+                        nparr = np.frombuffer(data, np.uint8)
+
+                    # Process image for display.
+                    nparr = nparr.reshape(st_image.height, st_image.width, 1)
+
+                    # Perform color conversion for Bayer.
+                    if pixel_format_info.is_bayer:
+                        bayer_type = pixel_format_info.get_pixel_color_filter()
+                        if bayer_type == st.EStPixelColorFilter.BayerRG:
+                            nparr = cv2.cvtColor(nparr, cv2.COLOR_BAYER_RG2RGB)
+                        elif bayer_type == st.EStPixelColorFilter.BayerGR:
+                            nparr = cv2.cvtColor(nparr, cv2.COLOR_BAYER_GR2RGB)
+                        elif bayer_type == st.EStPixelColorFilter.BayerGB:
+                            nparr = cv2.cvtColor(nparr, cv2.COLOR_BAYER_GB2RGB)
+                        elif bayer_type == st.EStPixelColorFilter.BayerBG:
+                            nparr = cv2.cvtColor(nparr, cv2.COLOR_BAYER_BG2RGB)
+
+                    # Resize image and store to self._image.
+                    nparr = cv2.resize(nparr, None, fx=DISPLAY_RESIZE_FACTOR, fy=DISPLAY_RESIZE_FACTOR)
+                    self._lock.acquire()
+                    self._image = nparr
+                    self._lock.release()
 
 if __name__ == "__main__":
+    stream_cv2 = False
+    
     # Get the callback function
     my_callback = CMyCallback()
-    callback_func = my_callback.datastream_callback
+    if stream_cv2 == True:
+        callback_func = my_callback.datastream_callback_cv2
+    else:
+        callback_func = my_callback.datastream_callback
     
     try:
         st.initialize()
@@ -69,10 +134,20 @@ if __name__ == "__main__":
         # callback = st_datastream.register_callback(datastream_callback) #NOTE: use when using callback function NOT callback class
         callback = st_datastream.register_callback(callback_func)
         
-        st_datastream.start_acquisition(5)
+        st_datastream.start_acquisition()
         st_device.acquisition_start()
         
-        input("Press enter to terminate")
+        
+        if stream_cv2 == True:
+            while True:
+                image = my_callback.image
+                if image is not None:
+                    cv2.imshow(winname='image', mat=image)
+                key = cv2.waitKey(delay=1)
+                if key != -1:
+                    break
+        else:
+            input("Press enter to terminate")
         
         st_device.acquisition_stop()
         st_datastream.stop_acquisition()
