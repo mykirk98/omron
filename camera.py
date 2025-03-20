@@ -28,22 +28,22 @@ class Camera:
         print(f"Device {self.device.info.display_name} started")
     
     
-    # def get_image(self):
-    #     """
-    #     Get image from camera
-    #     """
+    def get_image(self):
+        """
+        Get image from camera
+        """
         
-    #     while self.runningFlag is True:
-    #         with self.datastream.retrieve_buffer() as buffer:   # with ~ as 구문으로 버퍼를 자동으로 해제
-    #             # 버퍼에 이미지가 있는지 확인
-    #             if buffer.info.is_image_present:
-    #                 image = buffer.get_image()
-    #                 print(f"BlockID : {buffer.info.frame_id} Size : {image.width} x {image.height} Bytes : {image.get_image_data()[0]}")
-    #                 # return image
-    #             else:
-    #                 print("Image data does not exist")
-    #                 return 0
-    #         # time.sleep(0.01)
+        while self.runningFlag is True:
+            with self.datastream.retrieve_buffer() as buffer:   # with ~ as 구문으로 버퍼를 자동으로 해제
+                # 버퍼에 이미지가 있는지 확인
+                if buffer.info.is_image_present:
+                    image = buffer.get_image()
+                    print(f"BlockID : {buffer.info.frame_id} Size : {image.width} x {image.height} Bytes : {image.get_image_data()[0]}")
+                    # return image
+                else:
+                    print("Image data does not exist")
+                    return 0
+            # time.sleep(0.01)
 
     
     def stop(self):
@@ -65,6 +65,5 @@ if __name__ == "__main__":
     
     cam1 = Camera(st_system=st_system)
     cam1.start()
-    cam1.get_image()
-    input("Press enter to terminate\n")
+    cam1.get_image()    #FIXME: 무한 루프 탈출 방법 필요
     cam1.stop()
