@@ -2,7 +2,7 @@ import stapipy as st
 import threading
 import numpy as np
 import cv2
-
+from utils.device_info import print_info
 
 DISPLAY_RESIZE_FACTOR = 0.5
 
@@ -53,10 +53,10 @@ class CMyCallback:
 
     def datastream_callback_cv2(self, handle=None, context=None):
         """
-        Callback to handle events from DataStream.
+        Callback to handle events from DataStream
 
-        :param handle: handle that trigger the callback.
-        :param context: user data passed on during callback registration.
+        :param handle: handle that trigger the callback
+        :param context: user data passed on during callback registration
         """
         st_datastream = handle.module
         if st_datastream:
@@ -122,16 +122,12 @@ if __name__ == "__main__":
         st_system = st.create_system()
         st_device = st_system.create_first_device()
         
-        # print(f"device : {st_device.info.display_name}")
-        print(f"model : {st_device.info.model}")
-        print(f"serial number : {st_device.info.serial_number}")
-        print(f"device id : {st_device.info.device_id}")
+        print_info(device=st_device)
         
         # Create a datastream object for handling image stream data
         st_datastream = st_device.create_datastream()
         
         # Register callback for datastream
-        # callback = st_datastream.register_callback(datastream_callback) #NOTE: use when using callback function NOT callback class
         callback = st_datastream.register_callback(callback_func)
         
         st_datastream.start_acquisition()
@@ -147,7 +143,7 @@ if __name__ == "__main__":
                 if key != -1:
                     break
         else:
-            input("Press enter to terminate")
+            input("Press enter to terminate\n")
         
         st_device.acquisition_stop()
         st_datastream.stop_acquisition()
