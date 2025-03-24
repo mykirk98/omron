@@ -1,8 +1,8 @@
 import stapipy as st
 import threading
-import time
+import os
 import numpy as np
-import cv2  # 이미지 저장을 위한 OpenCV
+import cv2
 
 class CameraThread(threading.Thread):
     """
@@ -16,7 +16,9 @@ class CameraThread(threading.Thread):
         self.datastream = self.device.create_datastream()
         
         self.runningFlag = None  # 카메라 스레드 실행 여부 플래그
-    
+
+        self.image_save_dir = "captured_images"
+        os.makedirs(name=self.image_save_dir, exist_ok=True)
     
     def run(self):
         """
@@ -33,12 +35,13 @@ class CameraThread(threading.Thread):
         while self.runningFlag is True:
             with self.datastream.retrieve_buffer() as buffer:
                 if buffer.info.is_image_present == True:
-                    image = buffer.get_image()
-                    print(f"BlockID : {buffer.info.frame_id} Size : {image.width} x {image.height} First Byte : {image.get_image_data()[0]}")
+                    self.image = buffer.get_image()
+                    print(f"BlockID : {buffer.info.frame_id} Size : {self.image.width} x {self.image.height} First Byte : {self.image.get_image_data()[0]}")
+                    
+                    self.save_image(image=self.image, frame_id=buffer.info.frame_id)
                 else:
                     print("Image data does not exist")
                     
-            time.sleep(0.01)
         
         self.device.acquisition_stop()
         self.datastream.stop_acquisition()
@@ -52,6 +55,27 @@ class CameraThread(threading.Thread):
         self.runningFlag = False
         self.join()
         print(f"Device {self.device.info.display_name} stopped")
+
+
+    def save_image(self, image, frame_id: int) -> None:
+        """
+        캡처된 이미지를 저장하는 메소드
+        
+        Args:
+            image: 이미지 객체
+            frame_id: 이미지의 프레임 ID
+        """
+        
+        width, height = image.width, image.height
+        raw_image = image.get_image_data()
+        
+        # Numpy 배열로 변환
+        img_array = np.array(raw_image, dtype=np.uint8).reshape((height, width))
+        filename = os.path.join(self.image_save_dir, self.device.info.display_name + f"_{frame_id}.bmp")
+        
+        # 이미지 저장
+        cv2.imwrite(filename, img_array)
+        print(f"Image saved: {filename}")
 
 
 if __name__ == "__main__":
