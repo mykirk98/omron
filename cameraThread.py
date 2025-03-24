@@ -9,13 +9,14 @@ class CameraThread(threading.Thread):
     카메라 스레드 클래스: threading.Thread를 상속받아 독립적인 스레드에서 실행
     """
 
-    def __init__(self, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None, st_system):
+    def __init__(self, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None, st_system, isColor = True):
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
         
         self.device = st_system.create_first_device()  # 첫 번째 카메라 장치 생성
         self.datastream = self.device.create_datastream()
         
         self.runningFlag = None  # 카메라 스레드 실행 여부 플래그
+        self.isColor = isColor  # 컬러카메라 or 모노카메라
 
         self.image_save_dir = "captured_images"
         os.makedirs(name=self.image_save_dir, exist_ok=True)
@@ -68,7 +69,11 @@ class CameraThread(threading.Thread):
         """
         
         st_converter_pixelformat = st.create_converter(st.EStConverterType.PixelFormat)
-        st_converter_pixelformat.destination_pixel_format = st.EStPixelFormatNamingConvention.BGR8
+        
+        if self.isColor == True:
+            st_converter_pixelformat.destination_pixel_format = st.EStPixelFormatNamingConvention.BGR8
+        else:
+            st_converter_pixelformat.destination_pixel_format = st.EStPixelFormatNamingConvention.Mono8
         
         return st_converter_pixelformat
     
@@ -86,7 +91,13 @@ class CameraThread(threading.Thread):
         raw_image = image.get_image_data()
         
         # Numpy 배열로 변환
-        img_array = np.array(raw_image, dtype=np.uint8).reshape((height, width, 3))
+        img_array = np.array(raw_image, dtype=np.uint8)
+        
+        if self.isColor == True:
+            img_array = img_array.reshape((height, width, 3))
+        else:
+            img_array = img_array.reshape((height, width))
+        
         filename = os.path.join(self.image_save_dir, self.device.info.display_name + f"_{frame_id}.bmp")
         
         # 이미지 저장
@@ -98,7 +109,7 @@ if __name__ == "__main__":
     st.initialize()     # StApi 초기화
     st_system = st.create_system()
     
-    camera_thread = CameraThread(st_system=st_system)
+    camera_thread = CameraThread(st_system=st_system, isColor=False)
     camera_thread.start()
     
     input("Press Enter to stop...\n")
