@@ -19,6 +19,7 @@ class CameraThread(threading.Thread):
 
         self.image_save_dir = "captured_images"
         os.makedirs(name=self.image_save_dir, exist_ok=True)
+        self.st_converter = self.convert_image()
     
     def run(self):
         """
@@ -36,6 +37,7 @@ class CameraThread(threading.Thread):
             with self.datastream.retrieve_buffer() as buffer:
                 if buffer.info.is_image_present == True:
                     self.image = buffer.get_image()
+                    self.image = self.st_converter.convert(self.image)
                     print(f"BlockID : {buffer.info.frame_id} Size : {self.image.width} x {self.image.height} First Byte : {self.image.get_image_data()[0]}")
                     
                     self.save_image(image=self.image, frame_id=buffer.info.frame_id)
@@ -55,8 +57,22 @@ class CameraThread(threading.Thread):
         self.runningFlag = False
         self.join()
         print(f"Device {self.device.info.display_name} stopped")
+    
+    
+    def convert_image(self):
+        """
+        stApi로 이미지 변환
 
-
+        Return:
+            _image: 변환된 이미지 객체
+        """
+        
+        st_converter_pixelformat = st.create_converter(st.EStConverterType.PixelFormat)
+        st_converter_pixelformat.destination_pixel_format = st.EStPixelFormatNamingConvention.BGR8
+        
+        return st_converter_pixelformat
+    
+    
     def save_image(self, image, frame_id: int) -> None:
         """
         캡처된 이미지를 저장하는 메소드
@@ -70,7 +86,7 @@ class CameraThread(threading.Thread):
         raw_image = image.get_image_data()
         
         # Numpy 배열로 변환
-        img_array = np.array(raw_image, dtype=np.uint8).reshape((height, width))
+        img_array = np.array(raw_image, dtype=np.uint8).reshape((height, width, 3))
         filename = os.path.join(self.image_save_dir, self.device.info.display_name + f"_{frame_id}.bmp")
         
         # 이미지 저장
