@@ -9,18 +9,24 @@ class CameraThread(threading.Thread):
     카메라 스레드 클래스: threading.Thread를 상속받아 독립적인 스레드에서 실행
     """
 
-    def __init__(self, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None, st_system, isColor = True):
+    def __init__(self, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None,
+                    st_system, isColor = True):
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
+        """
+        Args:
+            st_system: StApi 시스템 객체
+            isColor: 컬러카메라 or 모노카메라 여부
+        """
+        self.runningFlag = None  # 카메라 스레드 실행 여부 플래그
+        self.isColor = isColor  # 컬러카메라 or 모노카메라
         
         self.device = st_system.create_first_device()  # 첫 번째 카메라 장치 생성
         self.datastream = self.device.create_datastream()
-        
-        self.runningFlag = None  # 카메라 스레드 실행 여부 플래그
-        self.isColor = isColor  # 컬러카메라 or 모노카메라
 
         self.image_save_dir = "captured_images"
         os.makedirs(name=self.image_save_dir, exist_ok=True)
         self.st_converter = self.convert_image()
+    
     
     def run(self):
         """
@@ -34,8 +40,8 @@ class CameraThread(threading.Thread):
         self.device.acquisition_start()
         print(f"Device {self.device.info.display_name} started")
         
-        while self.runningFlag is True:
-            with self.datastream.retrieve_buffer() as buffer:
+        while self.runningFlag == True:
+            with self.datastream.retrieve_buffer() as buffer:   # with 구문을 사용하여 버퍼를 자동으로 해제
                 if buffer.info.is_image_present == True:
                     self.image = buffer.get_image()
                     self.image = self.st_converter.convert(self.image)
@@ -104,12 +110,30 @@ class CameraThread(threading.Thread):
         cv2.imwrite(filename, img_array)
         print(f"Image saved: {filename}")
 
+    
+    def set_enumeration(nodemap, enum_name, entry_name):
+        """
+        열거형 노드의 값을 설정하는 함수
 
+        Args:
+            nodemap: 카메라 설정을 위한 노드 맵
+            enum_name:  열거형 노드의 심볼릭 값
+            entry_name:  열거형 엔트리 노드의 심볼릭 값
+        """
+        
+        # 열거형 노드 가져오기
+        enum_node = st.PyIEnumeration(nodemap.get_node(enum_name))
+        # 열거형 엔트리 노드 가져오기
+        entry_node = st.PyIEnumEntry(enum_node[entry_name])
+        # 열거형 노드의 값 설정
+        enum_node.set_entry_value(entry_node)
+    
+    
 if __name__ == "__main__":
     st.initialize()     # StApi 초기화
     st_system = st.create_system()
     
-    camera_thread = CameraThread(st_system=st_system, isColor=False)
+    camera_thread = CameraThread(st_system=st_system, isColor=True)
     camera_thread.start()
     
     input("Press Enter to stop...\n")
