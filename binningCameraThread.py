@@ -22,8 +22,13 @@ class CameraThread(threading.Thread):
         self.isColor = isColor  # 컬러카메라 or 모노카메라
         
         self.device = st_system.create_first_device()  # 첫 번째 카메라 장치 생성
+        self.nodemap = self.device.remote_port.nodemap  # 카메라 설정을 위한 노드 맵
         
-        self.image_save_dir = "captured_images"
+        # Binning 적용 TODO:
+        if binning == True:
+            self.set_decimation(binningFactor=2)
+        
+        self.image_save_dir = "captured_images/default"
         os.makedirs(name=self.image_save_dir, exist_ok=True)
         
         self.datastream = self.device.create_datastream()
@@ -49,7 +54,7 @@ class CameraThread(threading.Thread):
                     self.image = self.st_converter_pixelformat.convert(self.image)
                     print(f"BlockID : {buffer.info.frame_id} Size : {self.image.width} x {self.image.height} First Byte : {self.image.get_image_data()[0]}")
                     
-                    # self.save_image(image=self.image, frame_id=buffer.info.frame_id)
+                    self.save_image(image=self.image, frame_id=buffer.info.frame_id)
                 else:
                     print("Image data does not exist")
                     
@@ -130,11 +135,29 @@ class CameraThread(threading.Thread):
         enum_node.set_entry_value(entry_node)
     
     
+    def set_decimation(self, binningFactor: int=[1, 2]) -> None:
+        """
+        Decimation 설정(=Binning)
+        
+        Args:
+            binningFactor: 비닝 계수
+        """
+        try:
+            decimation_h = st.PyIInteger(self.nodemap.get_node("DecimationHorizontal"))
+            decimation_h.value = binningFactor
+
+            decimation_v = st.PyIInteger(self.nodemap.get_node("DecimationVertical"))
+            decimation_v.value = binningFactor
+        
+        except st.PyStError as e:
+            print(f"Failed to set Decimation: {e}")
+    
+    
 if __name__ == "__main__":
     st.initialize()     # StApi 초기화
     st_system = st.create_system()
     
-    camera_thread = CameraThread(st_system=st_system, isColor=True, binning=True)
+    camera_thread = CameraThread(st_system=st_system, isColor=True)
     camera_thread.start()
     
     input("Press Enter to stop...\n")
