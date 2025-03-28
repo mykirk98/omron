@@ -1,7 +1,5 @@
 import tkinter as tk
 
-import tkinter as tk
-
 class TriggerButtonApp:
     def __init__(self, root):
         self.root = root
