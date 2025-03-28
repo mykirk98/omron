@@ -23,7 +23,8 @@ class Camera:
         
         self.device = st_system.create_first_device()   # 첫 번째 카메라 객체 생성
         self.datastream = self.device.create_datastream()   # 데이터 스트림 객체 생성
-        self.runningFlag = None
+        
+        self.callback = self.datastream.register_callback(self.datastream_callback)   # 콜백 등록
         
         # 노드맵 설정 및 초기화
         self.nodemap = self.device.remote_port.nodemap
@@ -34,9 +35,8 @@ class Camera:
         """
         Start camera acquisition
         """
-        self.runningFlag = True
         
-        self.datastream.start_acquisition(50)
+        self.datastream.start_acquisition()
         self.device.acquisition_start()
         
         print(f"Device {self.device.info.display_name} started")
@@ -52,24 +52,20 @@ class Camera:
                 # 버퍼에 이미지가 있는지 확인
                 if buffer.info.is_image_present:
                     image = buffer.get_image()
+                    image = self.st_converter_pixelformat.convert(image)   # 이미지 변환
                     print(f"BlockID : {buffer.info.frame_id} Size : {image.width} x {image.height} Bytes : {image.get_image_data()[0]}")
-                    # return image
+                    image = self.raw_to_numpy(image=image)   # raw 이미지를 numpy 배열로 변환
+                    self.save_image(img_array=image, frame_id=buffer.info.frame_id)
                 else:
                     print("Image data does not exist")
-                    return 0
-            # time.sleep(0.01)
-
     
     def stop(self) -> None:
         """
         Stop camera acquisition
         """
         
-        self.runningFlag = False
-        
         self.device.acquisition_stop()
         self.datastream.stop_acquisition()
-        
         print(f"Device {self.device.info.display_name} stopped")
     
     def set_converter(self):
@@ -89,7 +85,7 @@ class Camera:
         
         return st_converter_pixelformat
 
-    def raw_to_image(self, image):    #TODO: raw:st.image?
+    def raw_to_numpy(self, image:st.PyStImage):    #TODO: raw:st.image?
         """
         raw 이미지를 numpy 배열로 변환
         
@@ -97,7 +93,7 @@ class Camera:
             raw: raw 이미지 객체
         
         Return:
-            img_array: 변환된 이미지 배열
+            img_array: 변환된 이미지 넘파이 배열
         """
         
         width, height = image.width, image.height
@@ -128,6 +124,7 @@ class Camera:
         cv2.imwrite(fileName, img_array)
         print(f"Image saved: {fileName}")
     
+    
 
 
 if __name__ == "__main__":
@@ -136,5 +133,6 @@ if __name__ == "__main__":
     
     cam1 = Camera(st_system=st_system)
     cam1.start()
-    cam1.get_image()    #FIXME: 무한 루프 탈출 방법 필요
+    # cam1.get_image()
+    input("Press Enter to stop camera acquisition...\n")
     cam1.stop()

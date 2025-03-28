@@ -75,7 +75,7 @@ class CameraThread(threading.Thread):
         stApi로 이미지 변환
 
         Return:
-            _image: 변환된 이미지 객체
+            st_converter_pixelformat: 변환된 이미지 객체
         """
         
         st_converter_pixelformat = st.create_converter(st.EStConverterType.PixelFormat)
@@ -117,7 +117,7 @@ class CameraThread(threading.Thread):
         캡처된 이미지를 저장하는 메소드
         
         Args:
-            image: 이미지 객체
+            img_array: 이미지 객체
             frame_id: 이미지의 프레임 ID
         """
         
