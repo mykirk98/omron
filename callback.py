@@ -50,6 +50,9 @@ class CallBack:
                     # 이미지 객체 생성
                     st_image = st_buffer.get_image()
                     print(f"BlockID : {st_buffer.info.frame_id} Size : {st_image.width} x {st_image.height} First Byte : {st_image.get_image_data()[0]}")
+                    
+                    # Lock을 사용하여 멀티스레드 환경에서 데이터가 손실되는 것을 방지
+                    
                 else:
                     print("Image data does not exist")
 
