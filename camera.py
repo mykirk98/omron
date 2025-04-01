@@ -187,7 +187,7 @@ class Camera:
         # 소프트웨어 트리거 소스 설정
         set_enumeration(nodemap, TRIGGER_SOURCE, TRIGGER_SOURCE_SOFTWARE)
 
-class CameraThread(threading.Thread):
+class CameraWorker(threading.Thread):
     """
     멀티스레딩 지원하는 카메라 클래스
     
@@ -206,7 +206,7 @@ class CameraThread(threading.Thread):
         
         # directory
         # self.image_save_dir = "captured_images"
-        self.image_save_dir = "multiCamTrigger2"
+        self.image_save_dir = "multiCamTrigger4"
         os.makedirs(name=self.image_save_dir, exist_ok=True)
         
         # 카메라 객체 생성
@@ -273,7 +273,7 @@ class CameraThread(threading.Thread):
                         # 이미지 변환
                         image = self.st_converter_pixelformat.convert(image)
                         # 로깅
-                        print(f"[Camera {self.camera_index} - {self.device.info.display_name}] BlockID={buffer.info.frame_id} Size={image.width} x {image.height} First Byte={image.get_image_data()[0]}")
+                        print(f"[action: {self.action}] [Camera {self.camera_index} - {self.device.info.display_name}] BlockID={buffer.info.frame_id} Size={image.width} x {image.height} First Byte={image.get_image_data()[0]}")
                         # # raw 이미지를 numpy 배열로 변환
                         image = self.raw_to_numpy(image=image)
                         # 이미지 저장
@@ -298,7 +298,7 @@ class CameraThread(threading.Thread):
         
         return st_converter_pixelformat
 
-    def raw_to_numpy(self, image:st.PyStImage):
+    def raw_to_numpy(self, image:st.PyStImage) -> np.ndarray:
         """
         raw 이미지를 numpy 배열로 변환하는 메소드
         
@@ -332,7 +332,7 @@ class CameraThread(threading.Thread):
         """
         
         # 이미지 저장 경로 설정
-        fileName = os.path.join(self.image_save_dir, f"{self.camera_index}_{self.device.info.display_name}_{frame_id}.bmp")
+        fileName = os.path.join(self.image_save_dir, f"action{self.action}_{self.camera_index}_{self.device.info.display_name}_{frame_id}.bmp")
         
         # 이미지 저장
         cv2.imwrite(filename=fileName, img=img_array)
@@ -360,10 +360,12 @@ class CameraThread(threading.Thread):
         # 소프트웨어 트리거 소스 설정
         set_enumeration(nodemap=nodemap, enum_name=TRIGGER_SOURCE, entry_name=TRIGGER_SOURCE_SOFTWARE)
     
-    def trigger(self):
+    def trigger(self, action:int) -> None:
         """
         소프트웨어 트리거 실행
         """
+        
+        self.action = action
         
         self.trigger_software.execute()
         print(f"[Camera {self.camera_index} - {self.device.info.display_name}] Trigger executed.")
