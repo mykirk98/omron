@@ -197,16 +197,19 @@ class CameraWorker(threading.Thread):
     
     """
     
-    def __init__(self, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None, st_system:st.PyStSystem, camera_index:int, isColor:bool=True) -> None:
+    def __init__(self, group = None, target = None, name = None, args = ..., kwargs = None, *, daemon = None,
+                    st_system:st.PyStSystem, camera_index:int, isColor:bool=True, barrier, barrier2) -> None:
         super().__init__(group, target, name, args, kwargs, daemon=daemon)
         
         # Flags
         self.isColor = isColor
         self.camera_index = camera_index
+        self.barrier = barrier
+        self.barrierTrigger = barrier2
         
         # directory
         # self.image_save_dir = "captured_images"
-        self.image_save_dir = "multiCamTrigger4"
+        self.image_save_dir = "multiCamTrigger8"
         os.makedirs(name=self.image_save_dir, exist_ok=True)
         
         # 카메라 객체 생성
@@ -239,6 +242,9 @@ class CameraWorker(threading.Thread):
         self.device.acquisition_start()
         
         print(f"[Camera {self.camera_index} - {self.device.info.display_name}] Started acquisition.")
+        
+        if self.barrier:
+            self.barrier.wait()
     
     def stop_acquisition(self) -> None:
         """
@@ -278,11 +284,13 @@ class CameraWorker(threading.Thread):
                         image = self.raw_to_numpy(image=image)
                         # 이미지 저장
                         self.save_image(img_array=image, frame_id=buffer.info.frame_id)
+                        self.barrierTrigger.wait()
                     else:
                         # # 버퍼에 이미지가 없는 경우
                         print(f"[Camera {self.camera_index} - {self.device.info.display_name}] Image data does not exist.")
             except st.PyStError as exception:
                 print(f"[Camera {self.camera_index} - {self.device.info.display_name}] Error: {exception}")
+        
     
     def set_converter(self) -> st.PyStConverter:
         """

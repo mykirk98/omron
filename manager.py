@@ -1,12 +1,13 @@
 import stapipy as st
 import threading
-# import time
+import time
 # import os
 # import cv2
 # import numpy as np
 # from nodemaps.setting import set_enumeration
 # from nodemaps.node_values import *
 from camera import CameraWorker
+from nodemaps.read_yaml import read_yaml
 
 
 class CameraManager:
@@ -27,8 +28,11 @@ class CameraManager:
         self.cb_func_list = []   # 콜백 함수 리스트
         self.callback_list = []  # 콜백 리스트
 
+        self.barrier = threading.Barrier(parties=num_cameras + 1)  # 스레드 동기화용 배리어
+        self.barrierTrigger = threading.Barrier(parties=num_cameras + 1)  # 트리거 동기화용 배리어
+
         for i in range(num_cameras):
-            cam = CameraWorker(st_system=self.st_system, camera_index=i, isColor=True)  # 카메라 스레드 생성
+            cam = CameraWorker(st_system=self.st_system, camera_index=i, isColor=True, barrier=self.barrier, barrier2=self.barrierTrigger)  # 카메라 스레드 생성
             self.camera_list.append(cam)
             self.cb_func_list.append(cam.datastream_callback)  # 콜백 함수 등록
             self.callback_list.append(cam.datastream.register_callback(self.cb_func_list[i]))
@@ -40,6 +44,10 @@ class CameraManager:
         
         for cam in self.camera_list:
             cam.start()
+        
+        print("[Manager] waiting for all cameras to be start...")
+        self.barrier.wait()  # 모든 카메라가 시작될 때까지 대기
+        print("[Manager] All cameras started. Now triggering...")
 
     def stop_all_cameras(self) -> None:
         """
@@ -67,23 +75,32 @@ class CameraManager:
         # 모든 카메라 시작
         self.start_all_cameras()
         counter = 0
-        while True:
-            counter += 1
+        # while True:
+        #     counter += 1
             
-            selection = input("\nEnter camera index to trigger (or 'q' to quit):\n")
+        #     selection = input("\nEnter camera index to trigger (or 'q' to quit):\n")
 
-            if selection.lower() == 'q':        # 종료
-                break
-            elif len(selection.split()) > 1:    # 여러 카메라 트리거
-                for index in selection.split():
-                    if index.isdigit():
-                        self.trigger_camera(camera_index=int(index), action=counter)
-                    else:
-                        print(f"Invalid input '{index}'. Please enter a valid camera index.")
-            elif selection.isdigit():           # 단일 카메라 트리거
-                self.trigger_camera(camera_index=int(selection), action=counter)
-            else:                               # 잘못된 입력 처리
-                print("Invalid input. Please enter a camera index or 'q'.")
+        #     if selection.lower() == 'q':        # 종료
+        #         break
+        #     elif len(selection.split()) > 1:    # 여러 카메라 트리거
+        #         for index in selection.split():
+        #             if index.isdigit():
+        #                 self.trigger_camera(camera_index=int(index), action=counter)
+        #             else:
+        #                 print(f"Invalid input '{index}'. Please enter a valid camera index.")
+        #     elif selection.isdigit():           # 단일 카메라 트리거
+        #         self.trigger_camera(camera_index=int(selection), action=counter)
+        #     else:                               # 잘못된 입력 처리
+        #         print("Invalid input. Please enter a camera index or 'q'.")
+        
+        actions = read_yaml(file_path='./nodemaps/action.yaml')
+        for i in actions.keys():
+            action = actions[i].split()
+            for index in action:
+                self.trigger_camera(camera_index=int(index), action=i)
+            self.barrierTrigger.wait()
+            # time.sleep(0.1)
+            print(f"[ACTION {i}] Completed!")
         # 모든 카메라 종료
         self.stop_all_cameras()
 

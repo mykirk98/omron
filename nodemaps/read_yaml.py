@@ -15,3 +15,13 @@ def read_yaml(file_path):
         data = yaml.safe_load(file)
     
         return data
+
+if __name__ == "__main__":
+    # 예시로 사용할 yaml 파일 경로
+    yaml_file_path = "./nodemaps/action.yaml"
+    
+    # yaml 파일 읽기
+    data = read_yaml(yaml_file_path)
+    
+    # 읽은 데이터 출력
+    print(data)
