@@ -31,3 +31,11 @@ def print_info(device) -> None:
     # print(f"Device GenTL Producer GenTL Vendor : {device.info.tl_gen_tl_vendor}")
     # print(f"Device GenTL Producer GenTL Model : {device.info.tl_gen_tl_model}")
     # print(f"Device GenTL Producer GenTL TL Type : {device.info.tl_gen_tl_type}")
+
+if __name__ == '__main__':
+    
+    st.initialize()
+    st_system = st.create_system()
+    st_device = st_system.create_first_device()
+    
+    print_info(device=st_device)

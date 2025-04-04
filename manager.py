@@ -59,7 +59,7 @@ class CameraManager:
 
     def trigger_camera(self, camera_index:int, action:int) -> None:
         """
-        특정 카메라 트리거
+        특정 카메라 트리거 (취사선택 가능)
         """
         
         if 0 <= camera_index < len(self.camera_list):
